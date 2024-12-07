@@ -11,8 +11,8 @@ steps = {}  # Stores steps as {username: [list_of_step_entries]}
 # Routes
 @app.route('/')
 def home():
-    if 'username' in session:
-        return redirect(url_for('dashboard'))
+    #if 'username' in session:
+    #    return redirect(url_for('dashboard'))
     return render_template('home.html')
 
 @app.route('/login', methods=['GET', 'POST'])

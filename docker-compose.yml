@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:5000"
+      - "9000:5000"
     volumes:
       - ./templates:/app/templates
       - ./app.py:/app/app.py
