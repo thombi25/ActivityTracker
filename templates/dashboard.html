@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Dashboard - Activity Tracker</title>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <form method="POST">
+        <label for="step_count">Enter Step Count:</label>
+        <input type="number" name="step_count" required>
+        <button type="submit">Add Step Count</button>
+    </form>
+    <h2>Your Step History</h2>
+    <ul>
+        {% for step in user_steps %}
+            <li>{{ step }} steps</li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('logout') }}">Logout</a>
+</body>
+</html>
+
