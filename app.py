@@ -1,5 +1,7 @@
 # app.py
-from flask import Flask, render_template, redirect, url_for, request, session, flash
+from flask import Flask, render_template, redirect, url_for, request, session, flash # type: ignore
+import psycopg2
+import logging
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
@@ -7,13 +9,32 @@ app.config['SECRET_KEY'] = 'your_secret_key_here'
 # Temporary in-memory storage
 users = {}  # Stores users as {username: password_hash}
 steps = {}  # Stores steps as {username: [list_of_step_entries]}
+logging.basicConfig(level=logging.DEBUG)
 
 # Routes
 @app.route('/')
 def home():
     #if 'username' in session:
     #    return redirect(url_for('dashboard'))
+    connectDatabase()
     return render_template('home.html')
+
+def connectDatabase():
+    conn = psycopg2.connect("postgresql://user:password@db:5432/activity_tracker_db")
+    app.logger.debug("Connected to Database")
+
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM users")
+    records = cur.fetchall()
+
+    app.logger.debug("Got records: " + str(records))
+
+    cur.close()
+    conn.close()
+    for record in records:
+        users[record.index] = record.count
+        steps[record.index] = []
+    return
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

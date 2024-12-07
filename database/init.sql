@@ -10,3 +10,6 @@ CREATE TABLE IF NOT EXISTS steps (
     step_count INT NOT NULL,
     recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+INSERT INTO users(username, password) VALUES ('tester', 'password');
+INSERT INTO steps(username, recorded_at) VALUES('tester', CURRENT_TIMESTAMP);

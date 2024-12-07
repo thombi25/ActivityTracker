@@ -11,6 +11,7 @@ services:
       - ./requirements.txt:/app/requirements.txt
     command: flask run --host=0.0.0.0
     environment:
+      - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://user:password@db:5432/activity_tracker_db
     depends_on:
       - db
@@ -27,7 +28,7 @@ services:
     ports:
       - "5432:5432"  # Optional: Expose port if needed for debugging
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user"]
+      test: ["CMD-SHELL", "pg_isready -U user -d activity_tracker_db"]
       interval: 10s
       timeout: 5s
       retries: 5
