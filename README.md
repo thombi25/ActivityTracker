@@ -16,4 +16,6 @@ Möglichkeit zur Darstellung des Schrittecounts (Label + Diagramm?) + Meilenstei
 
 Wir wollen DockerCompose benutzen.
 
+Architectural Overview:
+
 ![Architectural_Overview](https://github.com/user-attachments/assets/8a474e4a-e33e-4a06-ba15-b31b94ce7e9e)
