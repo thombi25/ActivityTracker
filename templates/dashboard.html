@@ -1,22 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Dashboard - Activity Tracker</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>Dashboard</h1>
+    <h1>Welcome, {{ session['username'] }}!</h1>
+
     <form method="POST">
         <label for="step_count">Enter Step Count:</label>
-        <input type="number" name="step_count" required>
-        <button type="submit">Add Step Count</button>
+        <input type="number" id="step_count" name="step_count" min="1" max="100000" required>
+        <button type="submit">Add</button>
     </form>
-    <h2>Your Step History</h2>
-    <ul>
-        {% for step in user_steps %}
-            <li>{{ step }} steps</li>
-        {% endfor %}
-    </ul>
+
+    <h2>Your Step Count Over Time</h2>
+    {% if user_steps %}
+        <canvas id="stepChart" width="400" height="200"></canvas>
+        <script>
+            const ctx = document.getElementById('stepChart').getContext('2d');
+            const stepChart = new Chart(ctx, {
+                type: 'bar', // Changed to 'bar' for a bar chart
+                data: {
+                    labels: {{ timestamps|tojson }}, // Timestamps for the x-axis
+                    datasets: [{
+                        label: 'Steps',
+                        data: {{ user_steps|tojson }}, // Step counts for the y-axis
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)', // Bar fill color
+                        borderColor: 'rgba(75, 192, 192, 1)', // Bar border color
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Steps'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        </script>
+    {% else %}
+        <p>No steps recorded yet.</p>
+    {% endif %}
+
     <a href="{{ url_for('logout') }}">Logout</a>
 </body>
 </html>
-

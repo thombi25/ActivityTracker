@@ -70,22 +70,28 @@ def register():
 def dashboard():
     if 'username' not in session:
         return redirect(url_for('login'))
-
+    
     username = session['username']
 
     # Handle form submission to add steps
     if request.method == 'POST':
-        step_count = int(request.form['step_count'])
-        conn = get_db_connection()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO steps (username, step_count, recorded_at) VALUES (%s, %s, CURRENT_TIMESTAMP)",
-            (username, step_count),
-        )
-        conn.commit()
-        cur.close()
-        conn.close()
-        flash('Step count added successfully!', 'success')
+        try:
+            step_count = int(request.form['step_count'])
+            if step_count <= 0 or step_count > 100000:  # Ensure step count is reasonable
+                flash('Step count must be a positive number and less than 100,000.', 'danger')
+            else:
+                conn = get_db_connection()
+                cur = conn.cursor()
+                cur.execute(
+                    "INSERT INTO steps (username, step_count, recorded_at) VALUES (%s, %s, CURRENT_TIMESTAMP)",
+                    (username, step_count),
+                )
+                conn.commit()
+                cur.close()
+                conn.close()
+                flash('Step count added successfully!', 'success')
+        except ValueError:  # Handle non-integer input
+            flash('Invalid input. Please enter a valid number.', 'danger')
 
     # Fetch step data for the logged-in user
     conn = get_db_connection()
@@ -103,6 +109,7 @@ def dashboard():
     timestamps = [row[1].strftime('%Y-%m-%d %H:%M:%S') for row in step_data]  # Timestamps
 
     return render_template('dashboard.html', user_steps=user_steps, timestamps=timestamps)
+
 
 @app.route('/logout')
 def logout():
