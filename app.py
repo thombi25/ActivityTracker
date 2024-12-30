@@ -16,25 +16,36 @@ logging.basicConfig(level=logging.DEBUG)
 def home():
     #if 'username' in session:
     #    return redirect(url_for('dashboard'))
-    connectDatabase()
+    getAllRegisteredUsers()
     return render_template('home.html')
 
-def connectDatabase():
+def getAllRegisteredUsers():
     conn = psycopg2.connect("postgresql://user:password@db:5432/activity_tracker_db")
-    app.logger.debug("Connected to Database")
+    app.logger.debug("Get all registered users")
 
     cur = conn.cursor()
     cur.execute("SELECT * FROM users")
     records = cur.fetchall()
 
-    app.logger.debug("Got records: " + str(records))
+    app.logger.debug("Got registered users: " + str(records))
 
     cur.close()
     conn.close()
     for record in records:
         users[record.index] = record.count
         steps[record.index] = []
+
+    app.logger.debug("Cached registered users: " + str(users))
     return
+
+def createNewUser(username, password):
+    conn = psycopg2.connect("postgresql://user:password@db:5432/activity_tracker_db")
+    app.logger.debug("Create new user: Connected to Database")
+    cur = conn.cursor()
+    cur.execute("INSERT INTO users(username, password) VALUES (%s, %s)", (username, password))
+    app.logger.debug("Created new user: %s, %s", username, password)
+    cur.close()
+    conn.close()
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -58,6 +69,7 @@ def register():
         else:
             users[username] = password
             steps[username] = []
+            createNewUser(username, password)
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
     return render_template('register.html')

@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS steps (
 );
 
 INSERT INTO users(username, password) VALUES ('tester', 'password');
-INSERT INTO steps(username, recorded_at) VALUES('tester', CURRENT_TIMESTAMP);
+INSERT INTO steps(username, step_count, recorded_at) VALUES('tester', 999, CURRENT_TIMESTAMP);
