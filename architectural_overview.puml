@@ -1,0 +1,16 @@
+@startuml Architectural_Overview
+package ActivityCounter {
+    package WebApp {}
+
+    package Database {
+        package Auth {}
+        package Data {}
+    }
+
+    package Monitoring {}
+
+    Database <--> WebApp: interchange data
+    Database -r-> Monitoring: reports
+    WebApp -r-> Monitoring: reports
+}
+@enduml
