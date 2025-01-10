@@ -7,8 +7,6 @@ services:
       - "9000:5000"
     env_file:
       - "env.docker"
-    environment:
-      - PYTHONUNBUFFERED=1
     depends_on:
       - db
   db:
