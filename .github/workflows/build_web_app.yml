@@ -30,7 +30,7 @@ jobs:
     - name: Test the application
       run: |
         echo "Waiting for the app to start..."
-        sleep 60
+        sleep 20
         curl --retry 5 --retry-delay 10 --fail http://localhost:9000 || exit 1
 
     - name: Shut down Docker Compose
