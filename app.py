@@ -1,23 +1,17 @@
 # app.py
 
 # Import statements
-from flask import Flask, render_template, redirect, url_for, request, session, flash  # type: ignore
+from flask import Flask, render_template, redirect, url_for, request, session, flash
 import psycopg2
 import logging
-
-# For Cloud.OpenObserve
-import requests  
-import os        
+import requests
+import os
 import json
 
-
-# Read OpenObserve credentials from Docker environment variables (or use defaults) //TODOO
-OPENOBSERVE_USERNAME = os.environ.get("OPENOBSERVE_USERNAME", "my_username_here")  
-OPENOBSERVE_PASSWORD = os.environ.get("OPENOBSERVE_PASSWORD", "my_password_here")
-OPENOBSERVE_URL = os.environ.get(
-    "OPENOBSERVE_URL",
-    "https://api.openobserve.ai/api/<YOUR_ORG>/<YOUR_PROJECT>/default/_json" 
-)
+# For self-hosted OpenObserve
+OPENOBSERVE_USERNAME = os.environ.get("OPENOBSERVE_USERNAME")
+OPENOBSERVE_PASSWORD = os.environ.get("OPENOBSERVE_PASSWORD")
+OPENOBSERVE_URL = os.environ.get("OPENOBSERVE_URL")
 
 # Custom logging handler to send logs to OpenObserve
 class OpenObserveHandler(logging.Handler):
@@ -33,14 +27,15 @@ class OpenObserveHandler(logging.Handler):
             "lineno": record.lineno,
         }]
         try:
-            requests.post(
+            response = requests.post(
                 OPENOBSERVE_URL,
                 json=payload,
-                auth=(OPENOBSERVE_USERNAME, OPENOBSERVE_PASSWORD),  # Basic auth
+                auth=(OPENOBSERVE_USERNAME, OPENOBSERVE_PASSWORD),
                 timeout=5
             )
-        except requests.exceptions.RequestException:
-            # Don't interrupt the main flow if logging fails
+            print("OpenObserve ingest response:", response.status_code, response.text)
+        except requests.exceptions.RequestException as e:
+            print("OpenObserve ingest failed:", e)
             pass
 
 # Create Flask app
@@ -48,14 +43,14 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 
 # Attach logging handler
-openobserve_handler = OpenObserveHandler() 
-openobserve_handler.setLevel(logging.DEBUG) # OpenObserve
+openobserve_handler = OpenObserveHandler()
+openobserve_handler.setLevel(logging.DEBUG)
 
-# Format for the logs sent to OpenObserve
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')  # OpenObserve
-openobserve_handler.setFormatter(formatter)  # OpenObserve
+# Format for logs
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+openobserve_handler.setFormatter(formatter)
 
-logging.getLogger().addHandler(openobserve_handler)  # OpenObserve
+logging.getLogger().addHandler(openobserve_handler)
 logging.basicConfig(level=logging.DEBUG)
 
 def get_db_connection():
@@ -91,10 +86,10 @@ def login():
         if user_record and user_record[0] == password:
             session['username'] = username
             flash('Login successful!', 'success')
-            app.logger.info(f"User '{username}' logged in successfully.")  # OpenObserve
+            app.logger.info(f"User '{username}' logged in successfully.")
             return redirect(url_for('dashboard'))
         else:
-            app.logger.warning(f"Failed login attempt for username '{username}'.")  # OpenObserve
+            app.logger.warning(f"Failed login attempt for username '{username}'.")
             flash('Invalid username or password.', 'danger')
 
     return render_template('login.html')
@@ -114,7 +109,7 @@ def register():
             flash('Username already exists. Please choose a different one.', 'danger')
         else:
             create_new_user(username, password)
-            app.logger.info(f"New user registered: {username}")  # OpenObserve
+            app.logger.info(f"New user registered: {username}")
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
 
@@ -129,7 +124,6 @@ def dashboard():
     
     username = session['username']
 
-    # Handle form submission to add steps
     if request.method == 'POST':
         try:
             step_count = int(request.form['step_count'])
@@ -146,11 +140,10 @@ def dashboard():
                 cur.close()
                 conn.close()
                 flash('Step count added successfully!', 'success')
-                app.logger.info(f"User '{username}' added {step_count} steps.")  # OpenObserve
+                app.logger.info(f"User '{username}' added {step_count} steps.")
         except ValueError:
             flash('Invalid input. Please enter a valid number.', 'danger')
 
-    # Fetch step data for the logged-in user
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute(
@@ -161,20 +154,18 @@ def dashboard():
     cur.close()
     conn.close()
 
-    # Prepare data for the chart
-    user_steps = [row[0] for row in step_data]  # Step counts
-    timestamps = [row[1].strftime('%Y-%m-%d %H:%M:%S') for row in step_data]  # Timestamps
+    user_steps = [row[0] for row in step_data]
+    timestamps = [row[1].strftime('%Y-%m-%d %H:%M:%S') for row in step_data]
 
     return render_template('dashboard.html', user_steps=user_steps, timestamps=timestamps)
 
 @app.route('/logout')
 def logout():
-    user = session.get('username', 'Unknown')  # OpenObserve
+    user = session.get('username', 'Unknown')
     session.pop('username', None)
     flash('Logged out successfully.', 'info')
-    app.logger.info(f"User '{user}' has logged out.")  # OpenObserve
+    app.logger.info(f"User '{user}' has logged out.")
     return redirect(url_for('home'))
 
-# Run the App
 if __name__ == '__main__':
     app.run(debug=True)
