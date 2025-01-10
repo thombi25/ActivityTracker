@@ -1,3 +1,5 @@
+version: "3.9"  # <-- You can add a version if you like, e.g., 3.9
+
 services:
   activity_tracker:
     build:
@@ -13,20 +15,28 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - DATABASE_URL=postgresql://user:password@db:5432/activity_tracker_db
+      # Enable Flask debug mode
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      # Cloud.OpenObserve credentials
+      - OPENOBSERVE_USERNAME=mysam.haj.ali@gmx.de
+      - OPENOBSERVE_PASSWORD=O76gceytS305p1WN2894
+      - OPENOBSERVE_URL=https://api.openobserve.ai/api/mysam_organization_51437_j9wVasnLpm8wtuz/default/_json
     depends_on:
       - db
+
   db:
     build:
       context: ./database  # Directory containing the database Dockerfile
       dockerfile: Dockerfile
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: activity_tracker_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=activity_tracker_db
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"  # Optional: Expose port if needed for debugging
+      - "5432:5432"  # Optional: Expose port for debugging
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d activity_tracker_db"]
       interval: 10s
