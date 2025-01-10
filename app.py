@@ -1,13 +1,19 @@
 from flask import Flask, render_template, redirect, url_for, request, session, flash  # type: ignore
 import psycopg2
 import logging
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 logging.basicConfig(level=logging.DEBUG)
 
 def get_db_connection():
-    return psycopg2.connect("postgresql://user:password@db:5432/activity_tracker_db")
+    postgres_user = os.getenv("POSTGRES_USER")
+    postgres_password = os.getenv("POSTGRES_PASSWORD")
+    postgres_port = os.getenv("POSTGRES_PORT")
+    postgres_name = os.getenv("POSTGRES_DBNAME")
+    connection_string = f"postgresql://{postgres_user}:{postgres_password}@db:{postgres_port}/{postgres_name}"
+    return psycopg2.connect(connection_string)
 
 @app.route('/')
 def home():
