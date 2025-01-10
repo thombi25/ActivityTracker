@@ -5,33 +5,31 @@ services:
       dockerfile: Dockerfile
     ports:
       - "9000:5000"
-    volumes:
-      - ./templates:/app/templates
-      - ./app.py:/app/app.py
-      - ./requirements.txt:/app/requirements.txt
-    command: flask run --host=0.0.0.0
-    environment:
-      - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql://user:password@db:5432/activity_tracker_db
+    env_file:
+      - "env.docker"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+
   db:
-    build:
-      context: ./database  # Directory containing the database Dockerfile
-      dockerfile: Dockerfile
+    image: postgres:17
+    container_name: db
+    shm_size: 128mb
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
       POSTGRES_DB: activity_tracker_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_secret
     volumes:
       - db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"  # Optional: Expose port if needed for debugging
+    secrets:
+      - postgres_secret
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d activity_tracker_db"]
       interval: 10s
-      timeout: 5s
       retries: 5
 
 volumes:
   db_data:
+secrets:
+  postgres_secret:
+    file: ./postgres_password.txt

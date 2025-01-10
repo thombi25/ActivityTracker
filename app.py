@@ -1,20 +1,40 @@
 from flask import Flask, render_template, redirect, url_for, request, session, flash  # type: ignore
 import psycopg2
+from psycopg2.pool import SimpleConnectionPool
 import logging
+import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your_secret_key_here'
+app.secret_key = os.getenv("SECRET_KEY", "a_default_secret_key_for_managing_sessions")
+
 logging.basicConfig(level=logging.DEBUG)
 
-def get_db_connection():
-    return psycopg2.connect("postgresql://user:password@db:5432/activity_tracker_db")
+def initialize_connection_pool() -> SimpleConnectionPool :
+    global connection_pool
+    postgres_user = os.getenv("POSTGRES_USER")
+    postgres_password = os.getenv("POSTGRES_PASSWORD")
+    postgres_host = os.getenv("POSTGRES_HOST", "db")
+    postgres_port = os.getenv("POSTGRES_PORT", "5432")
+    postgres_name = os.getenv("POSTGRES_DBNAME")
+
+    return SimpleConnectionPool(
+        1,
+        10,
+        user=postgres_user,
+        password=postgres_password,
+        host=postgres_host,
+        port=postgres_port,
+        database=postgres_name
+    )
+
+connection_pool = initialize_connection_pool()
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
 def create_new_user(username, password):
-    conn = get_db_connection()
+    conn = connection_pool.getconn()
     app.logger.debug("Create new user: Connected to Database")
     cur = conn.cursor()
     cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, password))
@@ -29,7 +49,7 @@ def login():
         username = request.form['username']
         password = request.form['password']
 
-        conn = get_db_connection()
+        conn = connection_pool.getconn()
         cur = conn.cursor()
         cur.execute("SELECT password FROM users WHERE username = %s", (username,))
         user_record = cur.fetchone()
@@ -50,7 +70,7 @@ def register():
         username = request.form['username']
         password = request.form['password']
 
-        conn = get_db_connection()
+        conn = connection_pool.getconn()
         cur = conn.cursor()
         cur.execute("SELECT username FROM users WHERE username = %s", (username,))
         user_exists = cur.fetchone()
@@ -72,15 +92,16 @@ def dashboard():
         return redirect(url_for('login'))
     
     username = session['username']
+    conn = None
 
-    # Handle form submission to add steps
-    if request.method == 'POST':
-        try:
-            step_count = int(request.form['step_count'])
-            if step_count <= 0 or step_count > 100000:  # Ensure step count is reasonable
+    try:
+        # Handle form submission to add steps
+        if request.method == 'POST':
+            step_count = int(request.form.get('step_count', 0))
+            if step_count <= 0 or step_count > 100000:  # Validate step count
                 flash('Step count must be a positive number and less than 100,000.', 'danger')
             else:
-                conn = get_db_connection()
+                conn = connection_pool.getconn()
                 cur = conn.cursor()
                 cur.execute(
                     "INSERT INTO steps (username, step_count, recorded_at) VALUES (%s, %s, CURRENT_TIMESTAMP)",
@@ -88,27 +109,36 @@ def dashboard():
                 )
                 conn.commit()
                 cur.close()
-                conn.close()
                 flash('Step count added successfully!', 'success')
-        except ValueError:  # Handle non-integer input
-            flash('Invalid input. Please enter a valid number.', 'danger')
 
-    # Fetch step data for the logged-in user
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT step_count, recorded_at FROM steps WHERE username = %s ORDER BY recorded_at ASC",
-        (username,),
-    )
-    step_data = cur.fetchall()
-    cur.close()
-    conn.close()
+        # Fetch step data for the logged-in user
+        if not conn:
+            conn = connection_pool.getconn()
 
-    # Prepare data for the chart
-    user_steps = [row[0] for row in step_data]  # Step counts
-    timestamps = [row[1].strftime('%Y-%m-%d %H:%M:%S') for row in step_data]  # Timestamps
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT step_count, recorded_at FROM steps WHERE username = %s ORDER BY recorded_at ASC",
+            (username,),
+        )
+        step_data = cur.fetchall()
+        cur.close()
 
-    return render_template('dashboard.html', user_steps=user_steps, timestamps=timestamps)
+        # Prepare data for the chart
+        user_steps = [row[0] for row in step_data]  # Step counts
+        timestamps = [row[1].strftime('%Y-%m-%d %H:%M:%S') for row in step_data]  # Timestamps
+
+        return render_template('dashboard.html', user_steps=user_steps, timestamps=timestamps)
+
+    except ValueError:
+        flash('Invalid input. Please enter a valid number.', 'danger')
+
+    except Exception as e:
+        app.logger.error(f"Error in dashboard: {e}")
+        flash('An error occurred. Please try again later.', 'danger')
+
+    finally:
+        if conn:
+            connection_pool.putconn(conn)
 
 
 @app.route('/logout')
