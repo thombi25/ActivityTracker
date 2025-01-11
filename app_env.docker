@@ -1,0 +1,8 @@
+POSTGRES_USER=user
+POSTGRES_PASSWORD=password
+POSTGRES_HOSTNAME=db
+POSTGRES_PORT=5432
+POSTGRES_DBNAME=activity_tracker_db
+OPENOBSERVE_USERNAME=admin@mydomain.local
+OPENOBSERVE_PASSWORD=secret
+OPENOBSERVE_URL=http://openobserve:5080/api/default/testStream/_json

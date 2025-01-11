@@ -3,9 +3,50 @@ import psycopg2
 from psycopg2.pool import SimpleConnectionPool
 import logging
 import os
+import requests  
+import json
 
+OPENOBSERVE_USERNAME = os.environ.get("OPENOBSERVE_USERNAME")  
+OPENOBSERVE_PASSWORD = os.environ.get("OPENOBSERVE_PASSWORD")
+OPENOBSERVE_URL = os.environ.get("OPENOBSERVE_URL")
+
+# Custom logging handler to send logs to OpenObserve
+class OpenObserveHandler(logging.Handler):
+    def emit(self, record):
+        log_entry = self.format(record)
+        payload = [{
+            "level": record.levelname.lower(),
+            "message": log_entry,
+            "loggerName": record.name,
+            "timestamp": record.created,
+            "filename": record.filename,
+            "funcName": record.funcName,
+            "lineno": record.lineno,
+        }]
+        try:
+            requests.post(
+                OPENOBSERVE_URL,
+                json=payload,
+                auth=(OPENOBSERVE_USERNAME, OPENOBSERVE_PASSWORD),
+                timeout=5
+            )
+        except requests.exceptions.RequestException:
+            # Don't interrupt the main flow if logging fails
+            pass
+
+# Create Flask app
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "a_default_secret_key_for_managing_sessions")
+
+# Attach logging handler
+openobserve_handler = OpenObserveHandler() 
+openobserve_handler.setLevel(logging.DEBUG) 
+
+# Format for the logs sent to OpenObserve
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')  
+openobserve_handler.setFormatter(formatter)  
+
+logging.getLogger().addHandler(openobserve_handler)  
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -13,13 +54,15 @@ def initialize_connection_pool() -> SimpleConnectionPool :
     global connection_pool
     postgres_user = os.getenv("POSTGRES_USER")
     postgres_password = os.getenv("POSTGRES_PASSWORD")
-    postgres_host = os.getenv("POSTGRES_HOST", "db")
-    postgres_port = os.getenv("POSTGRES_PORT", "5432")
+    postgres_host = os.getenv("POSTGRES_HOSTNAME")
+    postgres_port = os.getenv("POSTGRES_PORT")
     postgres_name = os.getenv("POSTGRES_DBNAME")
+    minConnections = 1
+    maxConnections = 10
 
     return SimpleConnectionPool(
-        1,
-        10,
+        minConnections,
+        maxConnections,
         user=postgres_user,
         password=postgres_password,
         host=postgres_host,
@@ -59,9 +102,12 @@ def login():
         if user_record and user_record[0] == password:
             session['username'] = username
             flash('Login successful!', 'success')
+            app.logger.debug(f"User '{username}' logged in successfully.")  
             return redirect(url_for('dashboard'))
+        else:
+            app.logger.warning(f"Failed login attempt for username '{username}'.")  
+            flash('Invalid username or password.', 'danger')
 
-        flash('Invalid username or password.', 'danger')
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
@@ -79,6 +125,7 @@ def register():
             flash('Username already exists. Please choose a different one.', 'danger')
         else:
             create_new_user(username, password)
+            app.logger.debug(f"New user registered: {username}")  
             flash('Registration successful! Please log in.', 'success')
             return redirect(url_for('login'))
 
@@ -95,7 +142,6 @@ def dashboard():
     conn = None
 
     try:
-        # Handle form submission to add steps
         if request.method == 'POST':
             step_count = int(request.form.get('step_count', 0))
             if step_count <= 0 or step_count > 100000:  # Validate step count
@@ -110,8 +156,8 @@ def dashboard():
                 conn.commit()
                 cur.close()
                 flash('Step count added successfully!', 'success')
+                app.logger.debug(f"User '{username}' added {step_count} steps.")
 
-        # Fetch step data for the logged-in user
         if not conn:
             conn = connection_pool.getconn()
 
@@ -140,11 +186,12 @@ def dashboard():
         if conn:
             connection_pool.putconn(conn)
 
-
 @app.route('/logout')
 def logout():
+    user = session.get('username', 'Unknown')  
     session.pop('username', None)
     flash('Logged out successfully.', 'info')
+    app.logger.debug(f"User '{user}' has logged out.")  
     return redirect(url_for('home'))
 
 # Run the App
