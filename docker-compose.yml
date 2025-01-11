@@ -20,7 +20,8 @@ services:
     env_file:
       - "app_env.docker"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
       - openobserve
 
   db:
