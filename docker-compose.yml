@@ -22,7 +22,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      - openobserve
+      openobserve:
+        condition: service_healthy
 
   db:
     image: postgres:17
