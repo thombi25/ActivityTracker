@@ -54,8 +54,8 @@ def initialize_connection_pool() -> SimpleConnectionPool :
     global connection_pool
     postgres_user = os.getenv("POSTGRES_USER")
     postgres_password = os.getenv("POSTGRES_PASSWORD")
-    postgres_host = os.getenv("POSTGRES_HOST", "db")
-    postgres_port = os.getenv("POSTGRES_PORT", "5432")
+    postgres_host = os.getenv("POSTGRES_HOSTNAME")
+    postgres_port = os.getenv("POSTGRES_PORT")
     postgres_name = os.getenv("POSTGRES_DBNAME")
     minConnections = 1
     maxConnections = 10

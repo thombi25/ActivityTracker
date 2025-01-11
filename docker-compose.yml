@@ -5,9 +5,8 @@ services:
       ports:
         - "5080:5080"
         - "8080:8080"
-      environment:
-        - ZO_ROOT_USER_EMAIL=admin@mydomain.local
-        - ZO_ROOT_USER_PASSWORD=secret
+      env_file:
+        - "openobserve_env.docker"
 
   activity_tracker:
     build:
@@ -16,14 +15,10 @@ services:
     ports:
       - "9000:5000"
     environment:
-      # Enable Flask debug mode
+      # Enable Flask debug mode to enable logging
       - FLASK_DEBUG=1
-      # OpenObserve-Umgebungsvariablen
-      - OPENOBSERVE_USERNAME=admin@mydomain.local
-      - OPENOBSERVE_PASSWORD=secret
-      - OPENOBSERVE_URL=http://openobserve:5080/api/default/testStream/_json
     env_file:
-      - "env.docker"
+      - "app_env.docker"
     depends_on:
       - db
       - openobserve
