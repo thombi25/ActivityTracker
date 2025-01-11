@@ -1,12 +1,12 @@
 services:
   openobserve:
-    image: openobserve/openobserve:latest
-    container_name: openobserve
-    ports:
-      - "5080:5080"
-      - "8080:8080"
-    env_file:
-      - "openobserve_env.docker"
+      image: openobserve/openobserve:latest
+      container_name: openobserve
+      ports:
+        - "5080:5080"
+        - "8080:8080"
+      env_file:
+        - "openobserve_env.docker"
 
   activity_tracker:
     build:
@@ -19,6 +19,9 @@ services:
       - FLASK_DEBUG=1
     env_file:
       - "app_env.docker"
+    depends_on:
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:17
@@ -32,6 +35,10 @@ services:
       - db_data:/var/lib/postgresql/data
     secrets:
       - postgres_secret
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d activity_tracker_db"]
+      interval: 10s
+      retries: 5
 
 volumes:
   db_data:
