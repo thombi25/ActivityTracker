@@ -1,47 +1,52 @@
-version: "3.9"  # <-- You can add a version if you like, e.g., 3.9
-
 services:
+  openobserve:
+      image: openobserve/openobserve:latest
+      container_name: openobserve
+      ports:
+        - "5080:5080"
+        - "8080:8080"
+      environment:
+        - ZO_ROOT_USER_EMAIL=admin@mydomain.local
+        - ZO_ROOT_USER_PASSWORD=secret
+
   activity_tracker:
     build:
       context: .
       dockerfile: Dockerfile
     ports:
       - "9000:5000"
-    volumes:
-      - ./templates:/app/templates
-      - ./app.py:/app/app.py
-      - ./requirements.txt:/app/requirements.txt
-    command: flask run --host=0.0.0.0
     environment:
-      - PYTHONUNBUFFERED=1
-      - DATABASE_URL=postgresql://user:password@db:5432/activity_tracker_db
       # Enable Flask debug mode
-      - FLASK_ENV=development
       - FLASK_DEBUG=1
-      # Cloud.OpenObserve credentials
-      - OPENOBSERVE_USERNAME=mysam.haj.ali@gmx.de
-      - OPENOBSERVE_PASSWORD=O76gceytS305p1WN2894
-      - OPENOBSERVE_URL=https://api.openobserve.ai/api/mysam_organization_51437_j9wVasnLpm8wtuz/default/_json
+      # OpenObserve-Umgebungsvariablen
+      - OPENOBSERVE_USERNAME=admin@mydomain.local
+      - OPENOBSERVE_PASSWORD=secret
+      - OPENOBSERVE_URL=http://openobserve:5080/api/default/testStream/_json
+    env_file:
+      - "env.docker"
     depends_on:
       - db
+      - openobserve
 
   db:
-    build:
-      context: ./database  # Directory containing the database Dockerfile
-      dockerfile: Dockerfile
+    image: postgres:17
+    container_name: db
+    shm_size: 128mb
     environment:
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=activity_tracker_db
+      POSTGRES_DB: activity_tracker_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_secret
     volumes:
       - db_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"  # Optional: Expose port for debugging
+    secrets:
+      - postgres_secret
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d activity_tracker_db"]
       interval: 10s
-      timeout: 5s
       retries: 5
 
 volumes:
   db_data:
+secrets:
+  postgres_secret:
+    file: ./postgres_password.txt
